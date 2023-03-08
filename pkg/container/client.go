@@ -13,6 +13,7 @@ import (
 	t "github.com/containrrr/watchtower/pkg/types"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	sdkClient "github.com/docker/docker/client"
@@ -25,6 +26,8 @@ const defaultStopSignal = "SIGTERM"
 // A Client is the interface through which watchtower interacts with the
 // Docker API.
 type Client interface {
+	Events(ctx context.Context, options types.EventsOptions) (<-chan events.Message, <-chan error)
+
 	ListContainers(t.Filter) ([]Container, error)
 	GetContainer(containerID t.ContainerID) (Container, error)
 	StopContainer(Container, time.Duration) error
@@ -39,9 +42,9 @@ type Client interface {
 // NewClient returns a new Client instance which can be used to interact with
 // the Docker API.
 // The client reads its configuration from the following environment variables:
-//  * DOCKER_HOST			the docker-engine host to send api requests to
-//  * DOCKER_TLS_VERIFY		whether to verify tls certificates
-//  * DOCKER_API_VERSION	the minimum docker api version to work with
+//   - DOCKER_HOST			the docker-engine host to send api requests to
+//   - DOCKER_TLS_VERIFY		whether to verify tls certificates
+//   - DOCKER_API_VERSION	the minimum docker api version to work with
 func NewClient(opts ClientOptions) Client {
 	cli, err := sdkClient.NewClientWithOpts(sdkClient.FromEnv)
 
@@ -80,6 +83,10 @@ const (
 type dockerClient struct {
 	api sdkClient.CommonAPIClient
 	ClientOptions
+}
+
+func (client dockerClient) Events(ctx context.Context, options types.EventsOptions) (<-chan events.Message, <-chan error) {
+	return client.api.Events(ctx, options)
 }
 
 func (client dockerClient) WarnOnHeadPullFailed(container Container) bool {

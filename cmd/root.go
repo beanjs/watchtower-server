@@ -340,9 +340,12 @@ func runUpgradesOnSchedule(c *cobra.Command, filter t.Filter, filtering string, 
 		return err
 	}
 
+	events := container.NewEvents(client)
+
 	writeStartupMessage(c, scheduler.Entries()[0].Schedule.Next(time.Now()), filtering)
 
 	scheduler.Start()
+	events.Start()
 
 	// Graceful shut-down on SIGINT/SIGTERM
 	interrupt := make(chan os.Signal, 1)
@@ -351,6 +354,7 @@ func runUpgradesOnSchedule(c *cobra.Command, filter t.Filter, filtering string, 
 
 	<-interrupt
 	scheduler.Stop()
+	events.Stop()
 	log.Info("Waiting for running update to be finished...")
 	<-lock
 	return nil
